@@ -294,7 +294,7 @@ exclude_statement <- ifelse(length(exclude)==0,
 ```{r, intProperties, echo=FALSE, results='asis'}
 # if there were some samples with integrations
 if (length(exclude) != nrow(ints_wc)) {
-res <- knitr::knit_child('junc_types.Rmd', quiet = TRUE)
+res <- knitr::knit_child(file.path(params$srcdir, 'scripts/junc_types.Rmd'), quiet = TRUE)
 cat(res, sep = '\n')  
 }
 

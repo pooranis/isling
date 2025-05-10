@@ -255,7 +255,7 @@ rule rmd_summary_dataset:
 		"docker://szsctt/isling:latest"
 	shell:
 		"""
-		Rscript -e 'params=list("outdir"="{params.outdir}", "host"="{params.host}", "virus"="{params.virus}", "host_prefix"="{params.host_prefix}", "virus_prefix"="{params.virus_prefix}", "conds"="{input.conds}", "dataset"="{wildcards.dset}", "workdir"="{params.workdir}"); rmarkdown::render("{params.srcdir}/scripts/summary.Rmd", output_file="{params.outfile}")'
+		Rscript -e 'params=list("outdir"="{params.outdir}", "host"="{params.host}", "virus"="{params.virus}", "host_prefix"="{params.host_prefix}", "virus_prefix"="{params.virus_prefix}", "conds"="{input.conds}", "dataset"="{wildcards.dset}", "workdir"="{params.workdir}", "srcdir" = "{params.srcdir}"); rmarkdown::render("{params.srcdir}/scripts/summary.Rmd", output_file="{params.outfile}")'
 		"""
 	
 rule rmd_summary:
