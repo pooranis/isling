@@ -12,7 +12,8 @@ rule find_ints:
 		tol = lambda wildcards: f"--tolerance {int(get_value_from_df(wildcards, 'cigar_tol'))}",
 		nm_pc = lambda wildcards: "" if get_value_from_df(wildcards, 'nm_pc') is None else f"--nm-pc {get_value_from_df(wildcards, 'nm_pc')}",
 		nm_diff = lambda wildcards: "" if get_value_from_df(wildcards, 'nm_diff') is None else f"--nm-diff {int(get_value_from_df(wildcards, 'nm_diff'))}",
-		frag_len = lambda wildcards: get_value_from_df(wildcards, 'mean_frag_len')
+		frag_len = lambda wildcards: get_value_from_df(wildcards, 'mean_frag_len'),
+                srcdir=workflow.basedir
 	resources:
 		mem_mb=lambda wildcards, attempt, input: int(resources_list_with_min_and_max(input, attempt, 1.5)),
 		time = lambda wildcards, attempt: (30, 120, 1440, 10080)[attempt - 1],
@@ -33,7 +34,7 @@ rule find_ints:
 		
 		echo "using mean fragment length $FRAG"
 		
-		python3 scripts/find_ints.py \
+		python3 {params.srcdir}/scripts/find_ints.py \
 		--host {input.host} \
 		--virus {input.virus}\
 		--mean-template-length $FRAG \

@@ -5,7 +5,8 @@ rule post_filter:
 		kept = temp("{outpath}/{dset}/ints/{samp}.{host}.{virus}.integrations.filter.txt"),
 		excluded = temp("{outpath}/{dset}/ints/{samp}.{host}.{virus}.integrations.removed.txt"),
 	params:
-		filterstring = lambda wildcards: get_value_from_df(wildcards, 'filter')
+		filterstring = lambda wildcards: get_value_from_df(wildcards, 'filter'),
+                srcdir=workflow.basedir
 	resources:
 		mem_mb=lambda wildcards, attempt, input: int(resources_list_with_min_and_max(input, attempt, 1.5)),
 		time = lambda wildcards, attempt: (30, 120, 1440, 10080)[attempt - 1],
@@ -14,7 +15,7 @@ rule post_filter:
 	conda: "../envs/filter.yml"
 	shell:
 		"""
-		python3 scripts/filter.py -i {input.ints} -k {output.kept} -e {output.excluded} -c '{params.filterstring}'
+		python3 {params.srcdir}/scripts/filter.py -i {input.ints} -k {output.kept} -e {output.excluded} -c '{params.filterstring}'
 		"""
 
 rule sort_bed:
@@ -155,7 +156,8 @@ rule separate_unique_locations:
 		virus_ambig = "{outpath}/{dset}/ints/{samp}.{host}.{virus}.integrations.post.virus_ambig.txt",
 		both_ambig = "{outpath}/{dset}/ints/{samp}.{host}.{virus}.integrations.post.both_ambig.txt",
 	params:
-		mapq = lambda wildcards: int(get_value_from_df(wildcards, 'mapq_thresh'))
+		mapq = lambda wildcards: int(get_value_from_df(wildcards, 'mapq_thresh')),
+                srcdir=workflow.basedir
 	container:
 		"docker://szsctt/isling:latest"
 	conda: "../envs/filter.yml"
@@ -165,21 +167,21 @@ rule separate_unique_locations:
 	shell:
 		"""
 		# get uniquely localised integrations as kept
-		python3 scripts/filter.py \
+		python3 {params.srcdir}/scripts/filter.py \
 		-i {input.kept} \
 		-k {output.unique} \
 		-e {output.at_least_one_ambig} \
 		-c 'HostMapQ >= {params.mapq} and ViralMapQ >= {params.mapq} and HostAmbiguousLocation == False and ViralAmbiguousLocation == False'
 		
 		# get both ambiguous itegrations as kept
-		python3 scripts/filter.py \
+		python3 {params.srcdir}/scripts/filter.py \
 		-i {output.at_least_one_ambig} \
 		-k {output.both_ambig} \
 		-e {output.one_ambig} \
 		-c '(HostMapQ < {params.mapq} or HostAmbiguousLocation == True) and (ViralMapQ < {params.mapq} or ViralAmbiguousLocation == True)'
 		
 		# kept > ambiguous in virus, excluded > ambiguous in host
-		python3 scripts/filter.py \
+		python3 {params.srcdir}/scripts/filter.py \
 		-i {output.one_ambig} \
 		-k {output.virus_ambig} \
 		-e {output.host_ambig} \
@@ -245,14 +247,15 @@ rule rmd_summary_dataset:
 		outdir = lambda wildcards, input: multiple_dirname(input.unique[0], 2),
 		host_prefix = lambda wildcards, input: os.path.splitext(input.host_ann[0])[0],
 		virus_prefix = lambda wildcards, input: os.path.splitext(input.virus_ann[0])[0],
-		workdir = lambda wildcards: os.getcwd()
+		workdir = lambda wildcards: os.getcwd(),
+                srcdir = workflow.basedir
 	conda:
 		"../envs/rscripts.yml"
 	container:
 		"docker://szsctt/isling:latest"
 	shell:
 		"""
-		Rscript -e 'params=list("outdir"="{params.outdir}", "host"="{params.host}", "virus"="{params.virus}", "host_prefix"="{params.host_prefix}", "virus_prefix"="{params.virus_prefix}", "conds"="{input.conds}", "dataset"="{wildcards.dset}", "workdir"="{params.workdir}"); rmarkdown::render("scripts/summary.Rmd", output_file="{params.outfile}")'
+		Rscript -e 'params=list("outdir"="{params.outdir}", "host"="{params.host}", "virus"="{params.virus}", "host_prefix"="{params.host_prefix}", "virus_prefix"="{params.virus_prefix}", "conds"="{input.conds}", "dataset"="{wildcards.dset}", "workdir"="{params.workdir}"); rmarkdown::render("{params.srcdir}/scripts/summary.Rmd", output_file="{params.outfile}")'
 		"""
 	
 rule rmd_summary:
@@ -309,11 +312,12 @@ rule rmd_summary:
 		summary_dir = lambda wildcards, output: os.path.join(os.path.abspath(os.path.dirname(output.rmd)), "summary"),
 		datasets = lambda wildcards: ", ".join([f'"{i}"' for i in set(toDo['dataset'])]),
 		output_file = lambda wildcards, output: os.path.abspath(output.rmd),
-		script = lambda wildcards: os.path.abspath("scripts/summary_all.Rmd"),
+		script = lambda wildcards: os.path.abspath(workflow.basedir + "/scripts/summary_all.Rmd"),
 		host_prefixes = lambda wildcards, input:  "c('" + "', '".join(os.path.splitext(i)[0] for i in input.host_ann) + "')",
 		virus_prefixes = lambda wildcards, input: "c('" + "', '".join(os.path.splitext(i)[0] for i in input.virus_ann) + "')",
 		bucket = workflow.default_remote_prefix,
-		workdir = lambda wildcards: os.getcwd()
+		workdir = lambda wildcards: os.getcwd(),
+                srcdir = workflow.basedir
 	conda:
 		"../envs/rscripts.yml"
 	container:
@@ -332,6 +336,7 @@ rule merged_bed:
 	params:
 		method = lambda wildcards: get_value_from_df(wildcards, 'merge_method'),
 		n = lambda wildcards: int(get_value_from_df(wildcards, 'merge_n_min')),
+                srcdir = workflow.basedir
 	container:
 		"docker://szsctt/isling:latest"
 	conda:
@@ -342,7 +347,7 @@ rule merged_bed:
 	threads: 1
 	shell:
 		"""
-		python3 scripts/merge.py -i {input.txt} -o {output.merged} -c {params.method} -n {params.n}
+		python3 {params.srcdir}/scripts/merge.py -i {input.txt} -o {output.merged} -c {params.method} -n {params.n}
 		"""
 
 rule summarise:
@@ -363,7 +368,8 @@ rule summarise:
 	params:
 		outdir = lambda wildcards, output: path.dirname(output[0]),
 		host = lambda wildcards: set(toDo.loc[toDo['dataset'] == wildcards.dset,'host']).pop(),
-		virus = lambda wildcards: set(toDo.loc[toDo['dataset'] == wildcards.dset,'virus']).pop()
+		virus = lambda wildcards: set(toDo.loc[toDo['dataset'] == wildcards.dset,'virus']).pop(),
+                srcdir = workflow.basedir
 	resources:
 		mem_mb=lambda wildcards, attempt, input: resources_list_with_min_and_max(input, attempt, 3, 1000),
 		time = lambda wildcards, attempt: (30, 120, 1440, 10080)[attempt - 1],
@@ -395,7 +401,7 @@ rule ucsc_bed:
 	threads: 1
 	shell:
 		"""
-		Rscript scripts/writeBed.R {params.host} {params.virus} {input} {params.outdir}
-		bash -e scripts/format_ucsc.sh {params.outdir}
+		Rscript {params.srcdir}/scripts/writeBed.R {params.host} {params.virus} {input} {params.outdir}
+		bash -e {params.srcdir}/scripts/format_ucsc.sh {params.outdir}
 		"""
 

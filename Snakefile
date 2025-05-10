@@ -43,7 +43,7 @@ if 'snakedir' not in config:
 	config['snakedir'] = getcwd()
 	print(f"warning: 'snakedir' not specified in config file: using current working directory ({config['snakedir']})")
 workdir: config['snakedir']
-snakedir = config['snakedir']
+snakedir = workflow.basedir
 config.pop('snakedir')
 
 # Check if cloud computing is used
